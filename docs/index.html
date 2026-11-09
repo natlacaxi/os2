@@ -1,0 +1,467 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>MiniOS</title>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#1b2a4a">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<style>
+:root{--bg1:#1b2a4a;--bg2:#6a3d7c;--glass:rgba(255,255,255,.16);--fg:#fff;--app:#f4f5f8;--appfg:#16181d;--card:#fff;--line:#dfe2ea;--acc:#3b82f6;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--app:#15171c;--appfg:#eef0f5;--card:#21242c;--line:#32363f}}
+:root[data-theme="dark"]{--app:#15171c;--appfg:#eef0f5;--card:#21242c;--line:#32363f}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+html,body{height:100%;margin:0;overflow:hidden;font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;background:#0c0e14;color:var(--fg)}
+#os{position:relative;height:100%;max-width:900px;margin:0 auto;overflow:hidden;background:linear-gradient(160deg,var(--bg1),var(--bg2));transition:background .5s}
+#status{display:flex;justify-content:space-between;padding:10px 20px;font-size:14px;font-weight:600;position:relative;z-index:30}
+#home{position:absolute;inset:40px 0 0;padding:20px 18px 120px;display:grid;grid-template-columns:repeat(auto-fill,minmax(84px,1fr));grid-auto-rows:min-content;gap:22px 8px;align-content:start;transition:transform .35s,opacity .35s}
+#os.open #home{transform:scale(.92);opacity:0}
+.ic{display:flex;flex-direction:column;align-items:center;gap:6px;background:none;border:0;color:var(--fg);font:inherit;font-size:12px;cursor:pointer}
+.ic i{width:62px;height:62px;border-radius:16px;display:grid;place-items:center;font-size:30px;font-style:normal;box-shadow:0 4px 14px rgba(0,0,0,.3);transition:transform .15s}
+.ic:active i{transform:scale(.92)}
+#dock{position:absolute;left:50%;bottom:22px;transform:translateX(-50%);display:flex;gap:16px;padding:12px 16px;border-radius:28px;background:var(--glass);backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px);z-index:20}
+#dock .ic span{display:none}
+.win{position:absolute;inset:0;background:var(--app);color:var(--appfg);z-index:40;display:flex;flex-direction:column;transform:scale(.3);opacity:0;pointer-events:none;border-radius:28px;transition:transform .3s cubic-bezier(.2,.9,.3,1),opacity .25s}
+.win.on{transform:none;opacity:1;pointer-events:auto;border-radius:0}
+.win header{padding:48px 20px 12px;font-size:22px;font-weight:700}
+.win .body{flex:1;overflow:auto;padding:0 20px 90px}
+#bar{position:absolute;left:50%;bottom:8px;transform:translateX(-50%);width:130px;height:6px;border-radius:3px;background:#fff;opacity:.85;border:0;z-index:60;cursor:pointer;padding:12px 0;background-clip:content-box}
+#os.open #bar{background:#888;background-clip:content-box}
+/* calc */
+.calc{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;max-width:360px;margin:0 auto}
+.screen{grid-column:1/-1;text-align:right;font-size:44px;padding:20px 8px;min-height:90px;overflow:hidden;font-variant-numeric:tabular-nums}
+.calc button{height:62px;border-radius:50%;border:0;font-size:22px;background:var(--card);color:var(--appfg);cursor:pointer}
+.calc button.op{background:var(--acc);color:#fff}
+.calc button.z{grid-column:span 2;border-radius:31px}
+/* notes */
+textarea{width:100%;height:55vh;border:1px solid var(--line);border-radius:14px;padding:14px;font:inherit;font-size:16px;background:var(--card);color:var(--appfg);resize:none}
+/* clock */
+#clk{font-size:64px;font-weight:300;text-align:center;margin:40px 0 4px;font-variant-numeric:tabular-nums}
+#dat{text-align:center;opacity:.65;margin-bottom:30px}
+.row{display:flex;justify-content:space-between;align-items:center;background:var(--card);padding:14px 16px;border-radius:14px;margin-bottom:10px;gap:10px}
+button.pill{border:0;border-radius:20px;padding:10px 16px;background:var(--acc);color:#fff;font-size:15px;cursor:pointer}
+.sw{display:flex;gap:10px}
+.sw button{width:38px;height:38px;border-radius:50%;border:2px solid var(--line);cursor:pointer}
+.in{width:100%;padding:10px 12px;border-radius:10px;border:1px solid var(--line);background:var(--card);color:var(--appfg);font:inherit;font-size:16px;margin-bottom:8px}
+.wd{grid-column:1/-1;background:var(--glass);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);border-radius:24px;padding:18px 22px}
+.wd b{display:block;font-size:52px;font-weight:300}.wd span{opacity:.8}
+#lock{position:absolute;inset:0;z-index:90;display:flex;flex-direction:column;align-items:center;justify-content:center;background:linear-gradient(160deg,var(--bg1),var(--bg2));transition:transform .45s cubic-bezier(.5,0,.2,1);touch-action:none}
+#lock.off{transform:translateY(-100%)}
+#lt{font-size:min(26vw,120px);font-weight:200}#ld{font-size:20px;opacity:.85}#lh{position:absolute;bottom:50px;opacity:.7}
+#qs{position:absolute;left:0;right:0;top:0;padding:56px 20px 22px;background:rgba(24,26,34,.94);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);border-radius:0 0 28px 28px;transform:translateY(-105%);transition:transform .3s;z-index:70}
+#qs.on{transform:none}
+.qg{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.qg button{border:0;border-radius:18px;padding:16px 6px;background:rgba(255,255,255,.12);color:#fff;font:inherit;font-size:14px;cursor:pointer}
+.qg button.act{background:var(--acc)}
+#edge{position:absolute;top:0;left:20%;right:20%;height:34px;z-index:75;cursor:pointer}
+#rec{position:absolute;inset:0;z-index:85;background:rgba(0,0,0,.55);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);display:none;align-items:center;gap:16px;padding:0 20px;overflow-x:auto}
+#rec.on{display:flex}
+.rc{flex:0 0 150px;height:230px;border-radius:22px;background:var(--card);color:var(--appfg);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;position:relative;cursor:pointer;font-size:15px}
+.rc i{font-style:normal;font-size:52px}.rc u{position:absolute;top:8px;right:12px;text-decoration:none;opacity:.6;font-size:20px}
+#dim{position:absolute;inset:0;background:#000;opacity:0;pointer-events:none;z-index:95}
+.ic i{position:relative;overflow:hidden}.ic i::after{content:"";position:absolute;inset:0;background:linear-gradient(145deg,rgba(255,255,255,.4),transparent 55%);pointer-events:none}
+#dock,.wd,.sp{border:1px solid rgba(255,255,255,.28);box-shadow:inset 0 1px 0 rgba(255,255,255,.45),0 10px 30px rgba(0,0,0,.25)}
+.sp{grid-column:1/-1;background:var(--glass);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);border-radius:18px;padding:12px 16px;cursor:pointer}
+#spot{position:absolute;inset:0;z-index:86;background:rgba(0,0,0,.5);backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px);display:none;flex-direction:column;padding:70px 20px 20px;overflow:auto}
+#spot.on{display:flex}
+#isl{position:absolute;top:8px;left:50%;transform:translateX(-50%);height:26px;min-width:84px;padding:0 14px;border-radius:20px;background:#000;color:#fff;font-size:13px;display:flex;align-items:center;justify-content:center;z-index:72;opacity:0;pointer-events:none;transition:min-width .35s cubic-bezier(.2,.9,.3,1),height .35s,opacity .25s}
+#isl.on{opacity:1;min-width:210px;height:36px}
+.ic i{width:var(--isz,62px);height:var(--isz,62px);border-radius:var(--rad,16px)}
+#dock,.wd,.sp,#qs{backdrop-filter:blur(var(--blur,16px));-webkit-backdrop-filter:blur(var(--blur,16px))}
+.win{transition:transform .5s cubic-bezier(.34,1.3,.64,1),opacity .25s,border-radius .3s}
+#os::before{content:"";position:absolute;inset:-25%;pointer-events:none;background:radial-gradient(40% 40% at 20% 25%,rgba(255,255,255,.22),transparent 70%),radial-gradient(35% 35% at 80% 70%,rgba(255,120,200,.3),transparent 70%),radial-gradient(40% 40% at 60% 20%,rgba(90,200,255,.28),transparent 70%);animation:drift 22s ease-in-out infinite alternate}
+@keyframes drift{to{transform:translate(7%,5%) rotate(9deg) scale(1.12)}}
+.noanim *{transition:none!important}.noanim #os::before{animation:none}
+#pad{display:none;position:absolute;bottom:56px;grid-template-columns:repeat(3,72px);gap:14px;justify-items:center}
+#pad.on{display:grid}
+#pad button{width:72px;height:72px;border-radius:50%;border:0;background:rgba(255,255,255,.18);color:#fff;font-size:28px;font-family:inherit;cursor:pointer}
+#pd{grid-column:1/-1;font-size:26px;letter-spacing:10px;margin-bottom:6px}
+.win h3{font-size:15px;opacity:.6;font-weight:600}
+.ic i{box-shadow:inset 0 0 0 .5px rgba(255,255,255,.5),inset 0 1.5px 1px rgba(255,255,255,.55),0 8px 18px rgba(0,0,0,.35)}
+#dock,.wd,.sp,#qs{backdrop-filter:blur(var(--blur,16px)) saturate(1.8);-webkit-backdrop-filter:blur(var(--blur,16px)) saturate(1.8)}
+.win .body{font-size:calc(16px*var(--tx,1))}.bold .win *{font-weight:600}
+#home{display:flex;padding:20px 0 120px;overflow-x:auto;overflow-y:hidden;scroll-snap-type:x mandatory;scrollbar-width:none}
+#home::-webkit-scrollbar{display:none}
+.pg{flex:0 0 100%;scroll-snap-align:start;padding:0 18px;display:grid;grid-template-columns:repeat(auto-fill,minmax(84px,1fr));grid-auto-rows:min-content;gap:22px 8px;align-content:start;overflow-y:auto}
+#dots{position:absolute;bottom:112px;left:0;right:0;display:flex;justify-content:center;gap:8px;z-index:19;transition:opacity .3s}
+#os.open #dots{opacity:0}
+#dots i{width:8px;height:8px;border-radius:50%;background:#fff;opacity:.4;transition:opacity .2s,transform .2s}
+#dots i.on{opacity:1;transform:scale(1.25)}
+#dg{display:grid;grid-template-columns:repeat(auto-fill,minmax(84px,1fr));gap:18px 6px;margin-top:6px}
+#dg button{background:none;border:0;color:var(--appfg);font:inherit;font-size:12px;display:flex;flex-direction:column;align-items:center;gap:6px;cursor:pointer}
+#dg img{width:56px;height:56px;border-radius:14px}
+#dg span{max-width:80px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.nowd .wd,.nosp .sp{display:none}.nodt #dots{display:none}.noaur #os::before{display:none}
+.hc{--line:#777}.hc .row{outline:1.5px solid var(--line)}
+#off{position:absolute;inset:0;background:#000;z-index:120;opacity:0;pointer-events:none;transition:opacity .35s}
+#off.on{opacity:1;pointer-events:auto}
+.lowT *,.saver *{backdrop-filter:none!important;-webkit-backdrop-filter:none!important}
+.saver *{transition:none!important;animation:none!important}.saver #os::before{display:none}
+.nold #ld{display:none}
+.ic{-webkit-touch-callout:none;-webkit-user-select:none;user-select:none}
+#fold{position:absolute;inset:0;z-index:86;background:rgba(0,0,0,.45);backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px);display:none;flex-direction:column;align-items:center;justify-content:center}
+#fold.on{display:flex}
+#menu{position:absolute;left:50%;bottom:20px;transform:translate(-50%,130%);width:min(94%,420px);background:rgba(28,30,38,.96);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);color:#fff;border-radius:24px;padding:14px;z-index:88;transition:transform .3s;display:flex;flex-direction:column;gap:6px;pointer-events:none}
+#menu.on{transform:translate(-50%,0);pointer-events:auto}
+#menu button{border:0;border-radius:14px;padding:13px;background:rgba(255,255,255,.12);color:#fff;font:inherit;font-size:16px;cursor:pointer;text-align:left}
+#toast{position:absolute;top:50px;left:50%;transform:translate(-50%,-80px);background:var(--card);color:var(--appfg);padding:10px 18px;border-radius:20px;z-index:80;transition:transform .3s;box-shadow:0 6px 20px rgba(0,0,0,.3)}
+#toast.on{transform:translate(-50%,0)}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+<div id="os">
+  <div id="status"><span id="t">--:--</span><span>📶 🔋 87 %</span></div>
+  <div id="home"></div>
+  <div id="dots"></div>
+  <div id="dock"></div>
+
+  <section class="win" id="w-calc"><header>Calculatrice</header><div class="body"><div class="calc" id="calc"></div></div></section>
+  <section class="win" id="w-notes"><header>Notes</header><div class="body"><textarea id="note" placeholder="Écris ici, c’est enregistré automatiquement."></textarea></div></section>
+  <section class="win" id="w-clock"><header>Horloge</header><div class="body">
+    <div id="clk">--:--:--</div><div id="dat"></div>
+    <div class="row"><span id="swv">Chrono 0:00.0</span><span><button class="pill" id="swb">Démarrer</button> <button class="pill" id="swr" style="background:#888">Reset</button></span></div>
+  </div></section>
+  <section class="win" id="w-set"><header>Réglages</header><div class="body">
+    <div class="row"><span>Thème</span><button class="pill" id="thm">Clair / Sombre</button></div>
+    <div class="row"><span>Fond d’écran</span><span class="sw" id="sw"></span></div>
+    <div id="instbox"><h3 style="margin:24px 0 10px">Installer une app</h3>
+    <input class="in" id="in-n" placeholder="Nom (ex. TalcoMusic)">
+    <input class="in" id="in-e" placeholder="Emoji (ex. 🎵)" maxlength="4">
+    <input class="in" id="in-u" placeholder="https://tonpseudo.github.io/mon-app/" inputmode="url">
+    <button class="pill" id="in-b">Installer</button>
+    <h3 style="margin:24px 0 10px">Apps installées</h3><div id="inst"></div>
+    <div class="row"><span>MiniOS</span><span style="opacity:.6">v7.0</span></div></div>
+  </div></section>
+  <section class="win" id="w-web"><header id="wt">App</header><div class="body" style="padding:0 0 28px"><iframe id="fr" style="width:100%;height:100%;border:0" allow="autoplay; fullscreen"></iframe></div></section>
+  <section class="win" id="w-about"><header>À propos</header><div class="body">
+    <p>MiniOS est un OS simulé en HTML, CSS et JavaScript. Verrouillage, réglages rapides (touche le haut de l’écran), multitâche (appui long sur la barre), apps installables.</p>
+    <p>Touche la barre en bas pour revenir à l’accueil.</p>
+  </div></section>
+
+  <div id="lock"><div id="lt">--:--</div><div id="ld"></div><div id="lh">Touche ou glisse vers le haut</div></div>
+  <div id="qs"><div class="qg" id="qg"></div><label style="display:block;margin:16px 0 4px">Luminosité</label><input type="range" id="br" min="30" max="100" value="100" style="width:100%"></div>
+  <div id="isl"></div><div id="spot"><input class="in" id="sq" placeholder="Rechercher une app"><div id="sr"></div></div>
+  <div id="edge"></div><div id="rec"></div><div id="dim"></div><div id="off"></div><div id="fold"></div><div id="menu"></div>
+  <button id="bar" aria-label="Accueil"></button>
+  <div id="toast"></div>
+</div>
+<script>
+window.onerror=function(m,u,l){var d=document.getElementById('err');if(!d){d=document.createElement('div');d.id='err';d.style.cssText='position:fixed;left:0;right:0;bottom:0;z-index:999;background:#b00;color:#fff;font:12px monospace;padding:8px;max-height:30vh;overflow:auto';document.body.appendChild(d)}d.textContent+=m+' (ligne '+l+') '};
+const $=s=>document.querySelector(s), os=$('#os');
+const root=document.documentElement;
+const apps=[
+ {id:'calc',n:'Calcul',e:'🧮',c:'#ff9f0a'},
+ {id:'notes',n:'Notes',e:'📝',c:'#f5c842'},
+ {id:'clock',n:'Horloge',e:'⏰',c:'#222'},
+ {id:'set',n:'Réglages',e:'⚙️',c:'#8e8e93'},
+ {id:'about',n:'À propos',e:'ℹ️',c:'#3b82f6'}
+];
+const esc=t=>String(t).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const mk=a=>{const b=document.createElement('button');b.className='ic';b.innerHTML=`<i style="background:${a.c}">${esc(a.e)}</i><span>${esc(a.n)}</span>`;b.onclick=()=>a.p?A.launch(a.p):a.u?openWeb(a):openApp(a.id);return b};
+let custom=[];try{custom=JSON.parse(localStorage.getItem('minios-apps')||'[]')}catch(e){}
+const save=()=>{try{localStorage.setItem('minios-apps',JSON.stringify(custom))}catch(e){}};
+function render(){
+ pages();
+ $('#dock').innerHTML='';['siri','notes','droid','set'].forEach(id=>$('#dock').append(mk(apps.find(a=>a.id===id))));
+ const l=ib.querySelector('#inst');l.innerHTML='';
+ custom.forEach((a,i)=>{const r=document.createElement('div');r.className='row';r.innerHTML=`<span>${esc(a.e)} ${esc(a.n)}</span>`;
+  const b=document.createElement('button');b.className='pill';b.style.background='#d33';b.textContent='Supprimer';
+  b.onclick=()=>{custom.splice(i,1);save();render()};r.append(b);l.append(r)});
+}
+function openWeb(a){$('#wt').textContent=a.n;if($('#fr').dataset.u!==a.u){$('#fr').src=a.u;$('#fr').dataset.u=a.u}openApp('web')}
+$('#in-b').onclick=()=>{
+ const n=$('#in-n').value.trim(),e=$('#in-e').value.trim()||'🌐',u=$('#in-u').value.trim();
+ if(!n||!/^https:\/\//.test(u)){toast('Nom et URL https:// requis');return}
+ custom.push({id:'w'+Date.now(),n,e,u,c:'#4a5568'});save();render();
+ $('#in-n').value=$('#in-e').value=$('#in-u').value='';toast(n+' installée');
+};
+/* v7.0 : nouvelles apps, verrouillage, réglages rapides, multitâche */
+apps.push({id:'nav',n:'Navigateur',e:'🌍',c:'#0a84ff'},{id:'paint',n:'Dessin',e:'🎨',c:'#ff375f'},{id:'snake',n:'Snake',e:'🐍',c:'#30d158'},{id:'siri',n:'Siri',e:'✨',c:'linear-gradient(135deg,#7c3aed,#ec4899)'},{id:'droid',n:'Android',e:'🤖',c:'#3ddc84'});
+function win(id,t,h){const s=document.createElement('section');s.className='win';s.id='w-'+id;s.innerHTML=`<header>${t}</header><div class="body">${h}</div>`;os.append(s)}
+win('nav','Navigateur',`<div style="display:flex;gap:8px;margin-bottom:10px"><input class="in" id="nu" placeholder="https://..." style="margin:0"><button class="pill" id="ng">Aller</button></div><iframe id="nf" style="width:100%;height:60vh;border:1px solid var(--line);border-radius:14px;background:#fff"></iframe><p style="opacity:.6;font-size:13px">Certains sites interdisent l’affichage dans un cadre.</p>`);
+$('#ng').onclick=()=>{let u=$('#nu').value.trim();if(!u)return;if(!/^https?:\/\//.test(u))u='https://'+u;$('#nf').src=u};
+win('paint','Dessin',`<canvas id="pc" style="width:100%;height:50vh;background:#fff;border-radius:14px;touch-action:none"></canvas><div class="sw" id="pcol" style="margin-top:12px"></div><button class="pill" id="pclr" style="margin-top:12px">Effacer</button>`);
+{const c=$('#pc'),x=c.getContext('2d');let col='#111',dr=false;
+const fit=()=>{const r=c.getBoundingClientRect();if(c.width!==Math.round(r.width)){c.width=r.width;c.height=r.height}};
+const pt=e=>{const r=c.getBoundingClientRect();return[e.clientX-r.left,e.clientY-r.top]};
+c.onpointerdown=e=>{fit();dr=true;x.beginPath();x.moveTo(...pt(e));x.strokeStyle=col;x.lineWidth=5;x.lineCap='round'};
+c.onpointermove=e=>{if(dr){x.lineTo(...pt(e));x.stroke()}};
+c.onpointerup=c.onpointerleave=()=>dr=false;
+['#111','#ef4444','#f59e0b','#22c55e','#3b82f6','#a855f7'].forEach(k=>{const b=document.createElement('button');b.style.background=k;b.onclick=()=>col=k;$('#pcol').append(b)});
+$('#pclr').onclick=()=>x.clearRect(0,0,c.width,c.height)}
+win('snake','Snake',`<canvas id="sc" width="320" height="320" style="width:min(100%,360px);display:block;margin:0 auto;background:var(--card);border-radius:14px;touch-action:none"></canvas><div class="row" style="max-width:360px;margin:12px auto"><span id="ss">Score 0</span><button class="pill" id="sb">Jouer</button></div><p style="text-align:center;opacity:.6">Glisse sur le plateau pour tourner.</p>`);
+{const c=$('#sc'),x=c.getContext('2d'),N=16,S=20;let sn,d,f,iv,sc,t0;
+const pl=()=>{f=[Math.random()*N|0,Math.random()*N|0]};
+const st=()=>{const h=[sn[0][0]+d[0],sn[0][1]+d[1]];
+ if(h[0]<0||h[1]<0||h[0]>=N||h[1]>=N||sn.some(p=>p[0]==h[0]&&p[1]==h[1])){clearInterval(iv);toast('Perdu : '+sc);return}
+ sn.unshift(h);if(h[0]==f[0]&&h[1]==f[1]){sc++;pl()}else sn.pop();
+ $('#ss').textContent='Score '+sc;x.clearRect(0,0,320,320);x.fillStyle='#ef4444';x.fillRect(f[0]*S,f[1]*S,S-2,S-2);x.fillStyle='#30d158';sn.forEach(p=>x.fillRect(p[0]*S,p[1]*S,S-2,S-2))};
+$('#sb').onclick=()=>{sn=[[8,8],[7,8],[6,8]];d=[1,0];sc=0;pl();clearInterval(iv);iv=setInterval(st,130)};
+c.addEventListener('touchstart',e=>{t0=e.touches[0]},{passive:true});
+c.addEventListener('touchend',e=>{if(!d)return;const t=e.changedTouches[0],dx=t.clientX-t0.clientX,dy=t.clientY-t0.clientY;
+ if(Math.abs(dx)>Math.abs(dy)){if(dx>0&&d[0]!=-1)d=[1,0];else if(dx<0&&d[0]!=1)d=[-1,0]}else{if(dy>0&&d[1]!=-1)d=[0,1];else if(dy<0&&d[1]!=1)d=[0,-1]}});
+document.addEventListener('keydown',e=>{const m={ArrowUp:[0,-1],ArrowDown:[0,1],ArrowLeft:[-1,0],ArrowRight:[1,0]}[e.key];if(d&&m&&(m[0]!=-d[0]||m[1]!=-d[1]))d=m})}
+// verrouillage
+$('#lock').onpointerup=()=>{$('#lock').classList.add('off');toast('Touche le haut de l’écran : réglages rapides')};
+// réglages rapides
+const qs=$('#qs');
+$('#edge').onclick=()=>qs.classList.toggle('on');
+[['📶 Wi-Fi',1],['🔵 Bluetooth',1],['✈️ Avion',0],['🌓 Thème'],['⛶ Plein écran'],['🔒 Verrouiller']].forEach(([n,a],i)=>{const b=document.createElement('button');b.textContent=n;if(a)b.classList.add('act');
+ b.onclick=()=>{if(i<3){b.classList.toggle('act');if(A)A[['wifi','bluetooth','airplane'][i]]()}else if(i==3)$('#thm').click();else if(i==4){document.fullscreenElement?document.exitFullscreen():document.documentElement.requestFullscreen?.()}else{qs.classList.remove('on');$('#lock').classList.remove('off')}};$('#qg').append(b)});
+$('#br').oninput=e=>$('#dim').style.opacity=(100-e.target.value)/100;
+// multitâche : appui long sur la barre
+let lp=false,tm;const bar=$('#bar');
+bar.onpointerdown=()=>{lp=false;tm=setTimeout(()=>{lp=true;showRec()},450)};
+bar.onpointerup=bar.onpointerleave=()=>clearTimeout(tm);
+function showRec(){const r=$('#rec');r.innerHTML='';r.classList.add('on');
+ if(!opened.length)r.innerHTML='<p style="margin:auto;opacity:.8">Aucune app ouverte</p>';
+ [...opened].reverse().forEach(id=>{const a=apps.find(x=>x.id===id)||{e:'🌐',n:$('#wt').textContent};
+  const c=document.createElement('div');c.className='rc';c.innerHTML=`<u>✕</u><i>${esc(a.e)}</i>${esc(a.n)}`;
+  c.onclick=e=>{r.classList.remove('on');if(e.target.tagName==='U'){opened.splice(opened.indexOf(id),1);if(cur&&cur.id==='w-'+id)closeApp()}else openApp(id)};r.append(c)})}
+$('#rec').onclick=e=>{if(e.target.id==='rec')e.target.classList.remove('on')};
+
+/* v7.0 : recherche, îlot, vibrations */
+function isl(id){const a=apps.find(x=>x.id===id),e=$('#isl');e.textContent=a?a.e+' '+a.n:'🌐 '+$('#wt').textContent;e.classList.add('on');clearTimeout(isl.t);isl.t=setTimeout(()=>e.classList.remove('on'),1800)}
+function spot(q){const r=$('#sr');r.innerHTML='';[...apps,...custom,...droid.map(d=>({n:d.n,e:'📦',p:d.p,id:'d:'+d.p}))].filter(a=>a.n.toLowerCase().includes(q.toLowerCase())&&!(cfg.hide||[]).includes(a.id)).forEach(a=>{const b=mk(a),o=b.onclick;b.className='row';b.style.cssText='width:100%;border:0;color:var(--appfg);font-size:17px;font-family:inherit;cursor:pointer';b.innerHTML=`<span>${esc(a.e)} ${esc(a.n)}</span>`;b.onclick=()=>{$('#spot').classList.remove('on');o()};r.append(b)})}
+$('#home').addEventListener('click',e=>{if(e.target.closest('.sp')){$('#spot').classList.add('on');$('#sq').value='';spot('');$('#sq').focus()}});
+$('#sq').oninput=e=>spot(e.target.value);
+$('#spot').onclick=e=>{if(e.target.id==='spot')e.currentTarget.classList.remove('on')};
+document.addEventListener('pointerdown',e=>{if(e.target.closest('button'))cfg.hap&&navigator.vibrate&&navigator.vibrate(8)});
+
+/* v7.0 : réglages complets, code PIN, aurore, batterie réelle */
+let cfg={acc:'#3b82f6',rad:16,blur:16,size:62,anim:1,hap:1,pin:'',theme:'auto',glass:29,tx:100,bold:0,hide:[],usage:{},wd:1,sp:1,dt:1,aurora:1,hc:0,h12:0,dnd:0,dtap:1,tapwake:1,auto:0,awake:0,snd:0,lowT:0,saver:0,secs:0,ld:1,folders:[]};
+try{Object.assign(cfg,JSON.parse(localStorage.getItem('minios-cfg')||'{}'))}catch(e){}
+function apply(){const r=root.style;r.setProperty('--acc',cfg.acc);r.setProperty('--rad',cfg.rad+'px');r.setProperty('--blur',cfg.blur+'px');r.setProperty('--glass','rgba(255,255,255,'+(.06+cfg.glass/100*.34).toFixed(2)+')');r.setProperty('--tx',cfg.tx/100);document.body.classList.toggle('bold',!!cfg.bold);{const bc=(c,on)=>document.body.classList.toggle(c,on);bc('nowd',!cfg.wd);bc('nosp',!cfg.sp);bc('nodt',!cfg.dt);bc('noaur',!cfg.aurora);bc('hc',!!cfg.hc);bc('lowT',!!cfg.lowT);bc('saver',!!cfg.saver);bc('nold',!cfg.ld);window.secs=!!cfg.secs;window.dnd=!!cfg.dnd;window.h12=!!cfg.h12}r.setProperty('--isz',cfg.size+'px');
+ if(cfg.bg1){os.style.setProperty('--bg1',cfg.bg1);os.style.setProperty('--bg2',cfg.bg2)}
+ document.body.classList.toggle('noanim',!cfg.anim);
+ if(cfg.theme&&cfg.theme!=='auto')root.dataset.theme=cfg.theme;else delete root.dataset.theme;
+ try{localStorage.setItem('minios-cfg',JSON.stringify(cfg))}catch(e){}}
+const el=(t,c)=>{const e=document.createElement(t);if(c)e.className=c;return e};
+const line=(l,c)=>{const r=el('div','row'),s=el('span');s.textContent=l;r.append(s,c);return r};
+const head=t=>{const h=el('h3');h.textContent=t;h.style.margin='22px 0 10px';return h};
+const rng=(a,b,k)=>{const i=el('input');i.type='range';i.min=a;i.max=b;i.value=cfg[k];i.oninput=()=>{cfg[k]=+i.value;apply()};return i};
+const tog=k=>{const b=el('button','pill'),u=()=>{b.textContent=cfg[k]?'Activé':'Désactivé';b.style.background=cfg[k]?'var(--acc)':'#888'};u();b.onclick=()=>{cfg[k]=cfg[k]?0:1;u();apply()};return b};
+const seg=(o,k)=>{const w=el('span','sw'),u=()=>[...w.children].forEach((c,i)=>c.style.background=o[i][1]===cfg[k]?'var(--acc)':'#888');
+ o.forEach(([n,v])=>{const b=el('button','pill');b.textContent=n;b.style.cssText='padding:8px 12px;width:auto;height:auto;border-radius:20px;border:0';b.onclick=()=>{cfg[k]=v;u();apply()};w.append(b)});u();return w};
+const sws=(arr,k)=>{const w=el('span','sw');arr.forEach(c=>{const b=el('button');b.style.background=c;b.onclick=()=>{cfg[k]=c;apply()};w.append(b)});return w};
+const col=(k,d)=>{const i=el('input');i.type='color';i.value=cfg[k]||d;i.oninput=()=>{cfg[k]=i.value;if(!cfg.bg1)cfg.bg1=k==='bg1'?i.value:'#1b2a4a';if(!cfg.bg2)cfg.bg2=k==='bg2'?i.value:'#6a3d7c';apply()};return i};
+const box=el('div'),info=el('span');info.style.opacity='.7';
+box.append(head('Apparence'),line('Thème',seg([['Auto','auto'],['Clair','light'],['Sombre','dark']],'theme')),
+ line('Couleur d’accent',sws(['#3b82f6','#ff375f','#30d158','#ff9f0a','#a855f7','#14b8a6'],'acc')),
+ line('Fond (haut)',col('bg1','#1b2a4a')),line('Fond (bas)',col('bg2','#6a3d7c')),
+ head('Écran d’accueil'),line('Taille des icônes',rng(48,84,'size')),line('Arrondi des icônes',rng(8,31,'rad')),line('Flou du verre',rng(0,40,'blur')),line('Verre liquide : clair ↔ teinté',rng(0,100,'glass')),
+ head('Accessibilité'),line('Taille du texte',rng(80,150,'tx')),line('Texte en gras',tog('bold')),head('Système'),line('Animations',tog('anim')),line('Vibrations',tog('hap')));
+const fs=el('button','pill');fs.textContent='Activer';fs.onclick=()=>document.documentElement.requestFullscreen&&document.documentElement.requestFullscreen();
+const pin=el('input','in');pin.placeholder='4 chiffres (vide = aucun)';pin.inputMode='numeric';pin.maxLength=4;pin.value=cfg.pin;pin.style.cssText='width:150px;margin:0';
+const pb=el('button','pill');pb.textContent='OK';pb.onclick=()=>{if(pin.value&&!/^\d{4}$/.test(pin.value)){toast('4 chiffres exactement');return}cfg.pin=pin.value;apply();toast(cfg.pin?'Code enregistré':'Code supprimé')};
+const pw=el('span');pw.append(pin,' ',pb);
+box.append(line('Plein écran',fs),line('Code de verrouillage',pw),(()=>{const p=el('p');p.style.cssText='opacity:.55;font-size:13px;margin:0 0 8px';p.textContent='Verrou d’interface, pas un chiffrement. Si tu l’oublies, vide les données de l’app dans les réglages Android.';return p})(),
+ head('Appareil'),line('Écran',(()=>{info.textContent=screen.width+'×'+screen.height+' @'+devicePixelRatio+'x';return info})()));
+const stg=el('span');stg.style.opacity='.7';box.append(line('Données MiniOS',stg),line('Langue',(()=>{const s=el('span');s.style.opacity='.7';s.textContent=navigator.language;return s})()));
+navigator.storage&&navigator.storage.estimate&&navigator.storage.estimate().then(e=>{stg.textContent=Math.round(e.usage/1024)+' Ko'});
+box.append(head('Siri et recherche'));
+apps.forEach(a=>{const b=el('button','pill'),u=()=>{const on=!(cfg.hide||[]).includes(a.id);b.textContent=on?'Affichée':'Masquée';b.style.background=on?'var(--acc)':'#888'};u();b.onclick=()=>{cfg.hide=cfg.hide||[];const i=cfg.hide.indexOf(a.id);i>-1?cfg.hide.splice(i,1):cfg.hide.push(a.id);u();apply()};box.append(line(a.e+' '+a.n,b))});
+box.append(head('Général'),line('Mise à jour du logiciel',(()=>{const x=el('span');x.style.opacity='.7';x.textContent='MiniOS 7.0 · à jour';return x})()));
+$('#w-set .body').prepend(box);
+navigator.getBattery&&navigator.getBattery().then(b=>{const u=()=>$('#status span:last-child').textContent='📶 🔋 '+Math.round(b.level*100)+' %';u();b.onlevelchange=u});
+// code PIN
+const pad=el('div');pad.id='pad';
+pad.innerHTML='<div id="pd">○○○○</div>'+['1','2','3','4','5','6','7','8','9','','0','⌫'].map(k=>k?`<button>${k}</button>`:'<span></span>').join('');
+$('#lock').append(pad);let ent='';
+const unlockNow=()=>{$('#lock').classList.add('off');pad.classList.remove('on');$('#lh').style.display='';ent='';$('#pd').textContent='○○○○'};
+$('#lock').onpointerup=e=>{if(e.target.closest('#pad'))return;if(cfg.pin){pad.classList.add('on');$('#lh').style.display='none'}else unlockNow()};
+pad.onclick=e=>{if(e.target.tagName!=='BUTTON')return;const k=e.target.textContent;ent=k==='⌫'?ent.slice(0,-1):ent+k;
+ $('#pd').textContent='●'.repeat(ent.length)+'○'.repeat(4-ent.length);
+ if(ent.length===4){if(ent===cfg.pin)unlockNow();else{toast('Code incorrect');ent='';setTimeout(()=>$('#pd').textContent='○○○○',300)}}};
+apply();
+
+/* v7.0 : Siri (assistant local) */
+win('siri','Siri',`<div id="sl" style="display:flex;flex-direction:column;gap:8px;min-height:50vh"></div><div style="display:flex;gap:8px;margin-top:14px"><input class="in" id="si" placeholder="Demande-moi quelque chose" style="margin:0"><button class="pill" id="ss2">Envoyer</button></div>`);
+const say=(t,me)=>{const d=el('div');d.textContent=t;d.style.cssText='padding:10px 14px;border-radius:18px;max-width:80%;align-self:'+(me?'flex-end;background:var(--acc);color:#fff':'flex-start;background:var(--card)');$('#sl').append(d);d.scrollIntoView&&d.scrollIntoView({block:'end'})};
+const reply=q=>{const s=q.toLowerCase();let m;{const x=androidCmd(s);if(x)return x}
+ if(m=s.match(/(?:ouvre|lance)\s+(.+)/)){const a=[...apps,...custom].find(x=>m[1].includes(x.n.toLowerCase()));if(a){setTimeout(()=>a.u?openWeb(a):openApp(a.id),500);return 'J’ouvre '+a.n}return 'Je ne trouve pas cette app.'}
+ if(/heure/.test(s))return 'Il est '+$('#t').textContent;
+ if(/date|quel jour/.test(s))return $('#ld').textContent;
+ if(m=s.match(/minuteur\s+(\d+)/)){setTimeout(()=>toast('⏰ Minuteur terminé'),m[1]*60000);return 'Minuteur de '+m[1]+' min lancé (garde MiniOS ouvert).'}
+ if(/calcul|combien/.test(s)){const e=s.replace(/(\d)\s*[x×]\s*(\d)/g,'$1*$2').replace(/÷/g,'/').replace(/,/g,'.').replace(/[^0-9+\-*/().]/g,'');if(e)return '= '+eval1(e)}
+ if(/sombre|nuit/.test(s)){cfg.theme='dark';apply();return 'Mode sombre activé.'}
+ if(/clair|jour/.test(s)){cfg.theme='light';apply();return 'Mode clair activé.'}
+ if(/verrouill/.test(s)){setTimeout(()=>$('#lock').classList.remove('off'),500);return 'Je verrouille.'}
+ return 'Je ne sais pas encore. Essaie : ouvre Notes, volume 50, luminosité 70, lampe, wifi, calcule 12*7, mode sombre, minuteur 5.'};
+const send=()=>{const v=$('#si').value.trim();if(!v)return;say(v,1);$('#si').value='';setTimeout(()=>say(reply(v)),350)};
+$('#ss2').onclick=send;$('#si').onkeydown=e=>{if(e.key==='Enter')send()};
+say('Salut ! Je comprends des commandes simples. Que veux-tu faire ?');
+
+/* v7.0 : pont Android, apps installées, pages */
+const A=window.AndroidBridge;
+win('droid','Apps Android',`<input class="in" id="dq" placeholder="Rechercher une app"><div id="dg"></div>`);
+let droid=[];
+function drawDroid(q=''){const g=$('#dg');g.innerHTML='';
+ if(!A){g.innerHTML='<p style="grid-column:1/-1;opacity:.6">Disponible uniquement dans l’APK MiniOS, pas dans le navigateur.</p>';return}
+ droid.filter(a=>a.n.toLowerCase().includes(q.toLowerCase())).forEach(a=>{const b=el('button');b.innerHTML=`<img alt="" src="data:image/png;base64,${a.i}"><span>${esc(a.n)}</span>`;b.onclick=()=>A.launch(a.p);g.append(b)})}
+if(A)setTimeout(()=>{try{droid=JSON.parse(A.apps())}catch(e){}drawDroid()},400);else drawDroid();
+$('#dq').oninput=e=>drawDroid(e.target.value);
+$('#br').oninput=e=>{const v=+e.target.value;if(A)A.setBrightness(v);else $('#dim').style.opacity=(100-v)/100};
+{const l=el('label');l.textContent='Volume';l.style.cssText='display:block;margin:12px 0 4px';const r=el('input');r.type='range';r.min=0;r.max=100;r.value=A?A.getVolume():50;r.style.width='100%';
+ r.oninput=()=>{A?A.setVolume(+r.value):toast('Le volume réel marche dans l’APK')};$('#qs').append(l,r);
+ let on=false;const t=el('button');t.textContent='🔦 Lampe';t.onclick=()=>{on=!on;t.classList.toggle('act',on);A?A.torch(on):toast('La lampe marche dans l’APK')};
+ const s=el('button');s.textContent='⚙️ Android';s.onclick=()=>A?A.settings():toast('Dans l’APK uniquement');$('#qg').append(t,s)}
+function androidCmd(s){let m;
+ if(m=s.match(/volume\D*(\d+)/)){if(A)A.setVolume(+m[1]);return A?'Volume à '+m[1]+' %.':'Le volume réel marche dans l’APK.'}
+ if(m=s.match(/luminosit\D*(\d+)/)){const v=Math.max(5,Math.min(100,+m[1]));if(A)A.setBrightness(v);else $('#dim').style.opacity=(100-v)/100;return 'Luminosité à '+v+' %.'}
+ if(/lampe|torche/.test(s)){const on=!/(éteins|eteins|off|coupe)/.test(s);if(A)A.torch(on);return A?(on?'Lampe allumée.':'Lampe éteinte.'):'La lampe marche dans l’APK.'}
+ if(/wi-?fi/.test(s)){if(A)A.wifi();return A?'J’ouvre le panneau Wi-Fi.':'Disponible dans l’APK.'}
+ if(/bluetooth/.test(s)){if(A)A.bluetooth();return A?'J’ouvre les réglages Bluetooth.':'Disponible dans l’APK.'}
+ if(m=s.match(/(?:ouvre|lance)\s+(.+)/)){if([...apps,...custom].some(x=>m[1].includes(x.n.toLowerCase())))return null;const d=droid.find(x=>m[1].includes(x.n.toLowerCase()));if(d){A.launch(d.p);return 'J’ouvre '+d.n}}
+ return null}
+function pages(){const h=$('#home');h.innerHTML='';const mkp=()=>{const p=el('div','pg');h.append(p);return p};
+ let p=mkp();p.innerHTML='<div class="wd"><b id="wc"></b><span id="wdt"></span></div><div class="sp">🔍 Rechercher</div>';
+ [...[...apps,...custom].filter(a=>!where(a.id)),...fl().map(f=>({folder:1,id:f.id,n:f.n,f}))].forEach((a,i)=>{if(i===8||(i>8&&(i-8)%16===0))p=mkp();const b=a.folder?mkF(a.f):mk(a);lpress(b,a);p.append(b)});
+ const d=$('#dots');d.innerHTML='';[...h.children].forEach(()=>d.append(el('i')));dotsUpdate();tick()}
+function dotsUpdate(){const h=$('#home'),n=Math.round(h.scrollLeft/(h.clientWidth||1));[...$('#dots').children].forEach((x,i)=>x.className=i===n?'on':'')}
+$('#home').addEventListener('scroll',dotsUpdate,{passive:true});
+
+/* v7.0 : Réglages façon iOS 27 (navigation par catégories) */
+const fmt=s=>s>=60?Math.floor(s/60)+' min':s+' s';
+const note=t=>{const p=el('p');p.style.cssText='opacity:.55;font-size:13px;margin:4px 4px 12px';p.textContent=t;return p};
+const btn=(t,f)=>{const b=el('button','pill');b.textContent=t;b.onclick=f;return b};
+const sp=t=>{const s=el('span');s.style.opacity='.7';s.textContent=t;return s};
+const sld=(a,b,v,f)=>{const r=el('input');r.type='range';r.min=a;r.max=b;r.value=v;r.oninput=()=>f(+r.value);return r};
+const bridge=(t,m)=>[line(t,btn('Ouvrir',()=>A?A[m]():toast('Disponible dans l’APK'))),note('Android interdit à une app de l’activer directement : MiniOS ouvre le panneau système.')];
+const bright=v=>{if(A)A.setBrightness(v);else $('#dim').style.opacity=(100-v)/100};
+const ib=$('#instbox');ib.remove();
+const P={
+ wifi:()=>bridge('Wi-Fi','wifi'),bt:()=>bridge('Bluetooth','bluetooth'),air:()=>bridge('Mode avion','airplane'),
+ snd:()=>[line('Vibrations au toucher',tog('hap')),line('Volume',sld(0,100,A?A.getVolume():50,v=>A?A.setVolume(v):toast('Volume réel dans l’APK')))],
+ foc:()=>[line('Ne pas déranger',tog('dnd')),note('Coupe les bannières affichées en haut de l’écran.')],
+ tps:()=>{const u=Object.entries(cfg.usage||{}).sort((a,b)=>b[1]-a[1]);
+  return [line('Temps total',sp(fmt(u.reduce((s,x)=>s+x[1],0)))),...u.map(([k,v])=>{const a=apps.find(x=>'w-'+x.id===k)||{e:'🌐',n:'App web'};return line(a.e+' '+a.n,sp(fmt(v)))}),btn('Réinitialiser',()=>{cfg.usage={};apply();goP('tps')})]},
+ gen:()=>{const st=sp('…');navigator.storage&&navigator.storage.estimate&&navigator.storage.estimate().then(e=>{st.textContent=Math.round(e.usage/1024)+' Ko'});
+  let c=0;const rs=btn('Réinitialiser',()=>{if(!c){c=1;rs.textContent='Confirmer';rs.style.background='#d33';return}try{localStorage.clear()}catch(e){}location.reload()});
+  return [line('Version',sp('MiniOS 7.0')),line('Mise à jour du logiciel',btn('Vérifier',()=>{navigator.serviceWorker?navigator.serviceWorker.getRegistration().then(r=>{if(r)r.update();toast('Recherche lancée')}):toast('Mises à jour via la page web')})),line('Écran',sp(screen.width+'×'+screen.height+' @'+devicePixelRatio+'x')),line('Langue',sp(navigator.language)),line('Données MiniOS',st),line('Format 12 heures',tog('h12')),line('Transférer ou réinitialiser',rs)]},
+ aff:()=>[line('Thème',seg([['Auto','auto'],['Clair','light'],['Sombre','dark']],'theme')),line('Luminosité',sld(30,100,100,bright)),line('Couleur d’accent',sws(['#3b82f6','#ff375f','#30d158','#ff9f0a','#a855f7','#14b8a6'],'acc')),line('Verre liquide : clair ↔ teinté',rng(0,100,'glass')),line('Flou du verre',rng(0,40,'blur')),line('Taille du texte',rng(80,150,'tx')),line('Texte en gras',tog('bold'))],
+ acc:()=>[line('Taille des icônes',rng(48,84,'size')),line('Arrondi des icônes',rng(8,31,'rad')),line('Widget horloge',tog('wd')),line('Barre Rechercher',tog('sp')),line('Points de pages',tog('dt'))],
+ bg:()=>{const pre=el('span','sw');[['#1b2a4a','#6a3d7c'],['#0f4c5c','#e36414'],['#1d3b2a','#9bc53d'],['#2b2d42','#ef233c'],['#0b132b','#3a86ff'],['#3a0ca3','#f72585']].forEach(([a,b])=>{const x=el('button');x.style.background=`linear-gradient(135deg,${a},${b})`;x.onclick=()=>{cfg.bg1=a;cfg.bg2=b;apply()};pre.append(x)});
+  return [line('Préréglages',pre),line('Couleur du haut',col('bg1','#1b2a4a')),line('Couleur du bas',col('bg2','#6a3d7c')),line('Aurore animée',tog('aurora'))]},
+ acs:()=>[line('Taille du texte',rng(80,150,'tx')),line('Texte en gras',tog('bold')),line('Animations',tog('anim')),line('Contraste élevé',tog('hc'))],
+ sir:()=>apps.map(a=>{const b=el('button','pill'),u=()=>{const on=!(cfg.hide||[]).includes(a.id);b.textContent=on?'Affichée':'Masquée';b.style.background=on?'var(--acc)':'#888'};u();b.onclick=()=>{cfg.hide=cfg.hide||[];const i=cfg.hide.indexOf(a.id);i>-1?cfg.hide.splice(i,1):cfg.hide.push(a.id);u();apply()};return line(a.e+' '+a.n,b)}),
+ pin:()=>[line('Code à 4 chiffres',pw),note('Verrou d’interface, pas un chiffrement. Si tu l’oublies, vide les données de l’app dans les réglages Android.'),btn('Verrouiller maintenant',()=>$('#lock').classList.remove('off'))],
+ bat:()=>{const s=sp('Indisponible ici');navigator.getBattery&&navigator.getBattery().then(b=>{s.textContent=Math.round(b.level*100)+' %'+(b.charging?' · en charge':'')});return [line('Niveau',s)]},
+ pri:()=>[line('Mes notes',btn('Effacer',()=>{try{localStorage.removeItem('minios-note')}catch(e){}$('#note').value='';toast('Notes effacées')})),line('Apps ajoutées',btn('Retirer tout',()=>{custom=[];save();render();toast('Apps retirées')})),note('Tout reste enregistré sur cet appareil. Dans l’APK, les apps que tu installes peuvent utiliser le pont Android : n’installe que des apps de confiance.')],
+ app:()=>[ib]};
+const cats=[['📶','#0a84ff','Wi-Fi','wifi'],['🔵','#0a84ff','Bluetooth','bt'],['✈️','#ff9f0a','Mode avion','air'],['🔔','#ff3b30','Sons et vibrations','snd'],['🌙','#5e5ce6','Concentration','foc'],['⏳','#5e5ce6','Temps d’écran','tps'],['⚙️','#8e8e93','Général','gen'],['🎛️','#8e8e93','Affichage et luminosité','aff'],['🏠','#af52de','Écran d’accueil','acc'],['🖼️','#30d158','Fond d’écran','bg'],['♿','#0a84ff','Accessibilité','acs'],['✨','#ec4899','Siri et recherche','sir'],['🔐','#30d158','Code et verrouillage','pin'],['🔋','#30d158','Batterie','bat'],['✋','#0a84ff','Confidentialité','pri'],['📦','#ff9f0a','Apps','app']];
+const sbd=$('#w-set .body'),shd=$('#w-set header');
+[...sbd.children].forEach(c=>c.style.display='none');
+shd.style.cssText='display:flex;align-items:center';
+shd.innerHTML='<button class="pill" id="sbk" style="display:none;padding:6px 14px;margin-right:10px">‹</button><span id="stt">Réglages</span>';
+const view=el('div');sbd.append(view);
+function goP(id){view.innerHTML='';$('#sbk').style.display=id?'':'none';$('#stt').textContent=id?cats.find(c=>c[3]===id)[2]:'Réglages';
+ if(!id){const q=el('input','in'),l=el('div');q.placeholder='Rechercher';
+  const draw=f=>{l.innerHTML='';cats.filter(c=>c[2].toLowerCase().includes(f.toLowerCase())).forEach(c=>{const r=el('div','row');r.style.cursor='pointer';r.innerHTML=`<span><i style="display:inline-grid;place-items:center;width:30px;height:30px;border-radius:8px;background:${c[1]};font-style:normal;margin-right:12px">${c[0]}</i>${esc(c[2])}</span><span style="opacity:.4">›</span>`;r.onclick=()=>goP(c[3]);l.append(r)})};
+  q.oninput=()=>draw(q.value);draw('');view.append(q,l);return}
+ P[id]().forEach(n=>view.append(n))}
+$('#sbk').onclick=()=>goP(null);goP(null);
+let uc=0;setInterval(()=>{if(cur){cfg.usage=cfg.usage||{};cfg.usage[cur.id]=(cfg.usage[cur.id]||0)+1;if(++uc%15===0)apply()}},1000);
+
+/* v7.0 : double tap, veille, petits réglages */
+let asleep=false,lastT=0,lastX=0,lastY=0,lastAct=Date.now(),wl=null,kept=false,ac;
+function sleepNow(){if(asleep)return;asleep=true;$('#off').classList.add('on');if(A)A.setBrightness(5);closeApp();qs.classList.remove('on');$('#rec').classList.remove('on');$('#spot').classList.remove('on');$('#lock').classList.remove('off')}
+function wakeNow(){if(!asleep)return;asleep=false;lastAct=Date.now();$('#off').classList.remove('on');if(A)A.setBrightness(+$('#br').value)}
+os.addEventListener('pointerup',e=>{
+ if(asleep||!$('#lock').classList.contains('off')||!cfg.dtap)return;
+ if(e.target.closest('button,input,textarea,iframe,canvas,.row,.rc,#qs,#pad,#edge,#spot,#rec'))return;
+ const n=Date.now();if(n-lastT<320&&Math.abs(e.clientX-lastX)<40&&Math.abs(e.clientY-lastY)<40){lastT=0;sleepNow()}else{lastT=n;lastX=e.clientX;lastY=e.clientY}});
+{const off=$('#off');let t0=0;off.addEventListener('pointerup',()=>{if(cfg.tapwake)wakeNow();else{const n=Date.now();if(n-t0<320)wakeNow();t0=n}})}
+document.addEventListener('pointerdown',()=>{lastAct=Date.now()},true);
+document.addEventListener('pointerdown',e=>{if(cfg.snd&&e.target.closest('button')){try{ac=ac||new(window.AudioContext||window.webkitAudioContext)();const o=ac.createOscillator(),g=ac.createGain();o.frequency.value=900;g.gain.value=.04;o.connect(g);g.connect(ac.destination);o.start();o.stop(ac.currentTime+.03)}catch(x){}}});
+setInterval(()=>{
+ if(cfg.auto&&!asleep&&Date.now()-lastAct>cfg.auto*1000)sleepNow();
+ if(!!cfg.awake!==kept){kept=!!cfg.awake;if(A)A.keepAwake(kept);else if(kept&&navigator.wakeLock)navigator.wakeLock.request('screen').then(x=>{wl=x}).catch(()=>{});else if(!kept&&wl){wl.release();wl=null}}},1500);
+const o1=P.snd;P.snd=()=>[...o1(),line('Son des touches',tog('snd'))];
+const o2=P.acs;P.acs=()=>[...o2(),line('Réduire la transparence',tog('lowT'))];
+P.ecr=()=>[line('Double tap pour éteindre',tog('dtap')),line('Toucher pour réveiller',tog('tapwake')),line('Verrouillage auto',seg([['Jamais',0],['30 s',30],['1 min',60],['2 min',120],['5 min',300]],'auto')),line('Garder l’écran allumé',tog('awake')),btn('Éteindre l’écran maintenant',()=>setTimeout(sleepNow,300)),note('L’écran passe au noir et la luminosité baisse au minimum. Il ne s’éteint pas physiquement : Android garde la main sur la veille matérielle.')];
+P.lck=()=>[line('Afficher les secondes',tog('secs')),line('Afficher la date',tog('ld')),line('Code à 4 chiffres',pw)];
+P.eco=()=>[line('Économie d’énergie',tog('saver')),line('Réduire la transparence',tog('lowT')),note('Coupe animations, aurore et flou du verre.')];
+cats.splice(8,0,['💤','#5e5ce6','Écran et veille','ecr'],['🔒','#8e8e93','Écran de verrouillage','lck'],['⚡','#ff9f0a','Économie d’énergie','eco']);
+goP(null);
+
+/* v7.0 : dossiers d'icônes (appui long) */
+const fl=()=>cfg.folders||(cfg.folders=[]);
+const where=id=>fl().find(f=>f.apps.includes(id));
+const byId=id=>[...apps,...custom].find(a=>a.id===id);
+function put(id,f){fl().forEach(x=>x.apps=x.apps.filter(i=>i!==id));if(f)f.apps.push(id);$('#fold').classList.remove('on');apply();render()}
+function lpress(b,a){let t;b.addEventListener('pointerdown',()=>{b._lp=false;t=setTimeout(()=>{b._lp=true;iconMenu(a)},500)});
+ ['pointerup','pointerleave','pointercancel'].forEach(ev=>b.addEventListener(ev,()=>clearTimeout(t)));
+ const o=b.onclick;b.onclick=e=>{if(b._lp){b._lp=false;return}o&&o(e)}}
+function mkF(f){const b=el('button','ic');
+ b.innerHTML=`<i style="background:rgba(255,255,255,.22);font-size:15px;display:grid;grid-template-columns:1fr 1fr;padding:9px;line-height:1.1">${f.apps.slice(0,4).map(id=>{const a=byId(id);return a?'<b style="font-weight:400">'+esc(a.e)+'</b>':''}).join('')}</i><span>${esc(f.n)}</span>`;
+ b.onclick=()=>openF(f);return b}
+function openF(f){const o=$('#fold');o.innerHTML='';const t=el('div');t.style.cssText='font-size:22px;font-weight:700;margin-bottom:16px';t.textContent=f.n;
+ const g=el('div');g.style.cssText='display:grid;grid-template-columns:repeat(auto-fill,minmax(84px,1fr));gap:22px 8px;width:min(92%,520px);padding:24px;border-radius:32px;background:rgba(255,255,255,.18);border:1px solid rgba(255,255,255,.3)';
+ f.apps.map(byId).filter(Boolean).forEach(a=>{const b=mk(a);lpress(b,a);const c=b.onclick;b.onclick=e=>{if(!b._lp)o.classList.remove('on');c(e)};g.append(b)});
+ if(!f.apps.length)g.textContent='Dossier vide';o.append(t,g);o.classList.add('on')}
+$('#fold').onclick=e=>{if(e.target.id==='fold')e.currentTarget.classList.remove('on')};
+function iconMenu(a){const m=$('#menu');m.innerHTML='';m.classList.add('on');
+ const add=(t,f)=>{const b=el('button');b.textContent=t;b.onclick=()=>{m.classList.remove('on');f&&f()};m.append(b)};
+ const h=el('div');h.textContent=(a.e||'📁')+' '+a.n;h.style.cssText='font-weight:700;padding:6px 4px 10px';m.append(h);
+ if(a.folder){const i=el('input','in');i.value=a.n;i.style.margin='0 0 8px';m.append(i);
+  add('Renommer',()=>{a.f.n=i.value.trim()||a.n;apply();render()});
+  add('Supprimer le dossier',()=>{cfg.folders=fl().filter(x=>x!==a.f);apply();render()})}
+ else{const cu=where(a.id);
+  fl().filter(f=>f!==cu).forEach(f=>add('📁 Mettre dans « '+f.n+' »',()=>put(a.id,f)));
+  if(cu)add('↩️ Sortir de « '+cu.n+' »',()=>put(a.id,null));
+  const i=el('input','in');i.placeholder='Nom du nouveau dossier';i.style.margin='8px 0';m.append(i);
+  add('➕ Créer le dossier et y mettre l’app',()=>{const f={id:'f'+Date.now(),n:i.value.trim()||'Dossier',apps:[]};fl().push(f);put(a.id,f)})}
+ add('Annuler')}
+$('#home').oncontextmenu=e=>e.preventDefault();
+const o3=P.acc;P.acc=()=>[...o3(),note('Appui long sur une icône : la ranger dans un dossier, ou en créer un.')];
+
+render();
+let cur=null;
+const opened=[];
+function openApp(id){closeApp();{const i=opened.indexOf(id);if(i>-1)opened.splice(i,1);opened.push(id)}isl(id);cur=$('#w-'+id);cur.classList.add('on');os.classList.add('open')}
+function closeApp(){if(cur){cur.classList.remove('on');cur=null}os.classList.remove('open')}
+$('#bar').onclick=()=>{if(lp){lp=false;return}closeApp()};
+function toast(m){if(window.dnd)return;const t=$('#toast');t.textContent=m;t.classList.add('on');setTimeout(()=>t.classList.remove('on'),1600)}
+// horloge
+function tick(){const d=new Date(),p=n=>String(n).padStart(2,'0');
+ const hm=(window.h12?p(d.getHours()%12||12):p(d.getHours()))+':'+p(d.getMinutes()),dt=d.toLocaleDateString('fr-FR',{weekday:'long',day:'numeric',month:'long'});$('#t').textContent=hm;$('#lt').textContent=hm+(window.secs?':'+p(d.getSeconds()):'');$('#ld').textContent=dt;if($('#wc')){$('#wc').textContent=hm;$('#wdt').textContent=dt}
+ $('#clk').textContent=p(d.getHours())+':'+p(d.getMinutes())+':'+p(d.getSeconds());
+ $('#dat').textContent=d.toLocaleDateString('fr-FR',{weekday:'long',day:'numeric',month:'long'})}
+tick();setInterval(tick,1000);
+// chrono
+let st=0,run=false,acc=0,iv;
+const sv=()=>{const ms=acc+(run?Date.now()-st:0);$('#swv').textContent='Chrono '+Math.floor(ms/60000)+':'+String(Math.floor(ms/1000)%60).padStart(2,'0')+'.'+Math.floor(ms/100)%10};
+$('#swb').onclick=()=>{if(run){acc+=Date.now()-st;run=false;clearInterval(iv);$('#swb').textContent='Reprendre'}else{st=Date.now();run=true;iv=setInterval(sv,100);$('#swb').textContent='Pause'}};
+$('#swr').onclick=()=>{run=false;acc=0;clearInterval(iv);sv();$('#swb').textContent='Démarrer'};
+// calculatrice
+let ex='';
+const keys=['C','±','%','÷','7','8','9','×','4','5','6','−','1','2','3','+','0','.','='];
+const cg=$('#calc');cg.innerHTML='<div class="screen" id="scr">0</div>';
+keys.forEach(k=>{const b=document.createElement('button');b.textContent=k;if('÷×−+='.includes(k))b.className='op';if(k==='0')b.className='z';b.onclick=()=>press(k);cg.append(b)});
+function press(k){
+ if(k==='C')ex='';
+ else if(k==='±')ex=ex?String(-eval1(ex)):'';
+ else if(k==='=')ex=String(eval1(ex));
+ else ex+=k;
+ $('#scr').textContent=ex||'0'}
+function eval1(s){try{const e=s.replace(/÷/g,'/').replace(/×/g,'*').replace(/−/g,'-').replace(/%/g,'/100');
+ if(!/^[0-9+\-*/.() ]*$/.test(e))return 'Erreur';
+ const r=Function('"use strict";return ('+e+')')();return Number.isFinite(r)?+r.toFixed(10):'Erreur'}catch(x){return 'Erreur'}}
+// notes
+try{$('#note').value=localStorage.getItem('minios-note')||''}catch(e){}
+$('#note').oninput=e=>{try{localStorage.setItem('minios-note',e.target.value)}catch(x){}};
+// réglages
+
+$('#thm').onclick=()=>{const dark=root.dataset.theme==='dark'||(!root.dataset.theme&&matchMedia('(prefers-color-scheme:dark)').matches);root.dataset.theme=dark?'light':'dark';toast('Thème '+(dark?'clair':'sombre'))};
+[['#1b2a4a','#6a3d7c'],['#0f4c5c','#e36414'],['#1d3b2a','#9bc53d'],['#2b2d42','#ef233c']].forEach(([a,b])=>{
+ const s=document.createElement('button');s.style.background=`linear-gradient(135deg,${a},${b})`;
+ s.onclick=()=>{os.style.setProperty('--bg1',a);os.style.setProperty('--bg2',b);toast('Fond modifié')};$('#sw').append(s)});
+if('serviceWorker' in navigator)navigator.serviceWorker.register('sw.js').catch(()=>{});
+</script>
+</body>
+</html>
